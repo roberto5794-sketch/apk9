@@ -1,0 +1,78 @@
+
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.geosul.geotools'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.geosul.geotools"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug { debuggable true }
+    }
+
+    buildFeatures { viewBinding true }
+    packaging {
+        resources {
+            excludes += ['META-INF/INDEX.LIST', 'META-INF/io.netty.versions.properties']
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
+    implementation "androidx.webkit:webkit:1.11.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.0"
+
+    // ML Kit OCR
+    implementation "com.google.mlkit:text-recognition:16.0.0"
+
+    // Vosk offline STT
+    implementation "org.vosk:android:0.3.38"
+}
+
+
+// === Auto-download Vosk model (pt-BR) on first build ===
+def voskModelUrl = 'https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.zip'
+def voskZip = "$buildDir/vosk-model-small-pt-0.3.zip"
+def voskTargetDir = "$projectDir/src/main/assets/models/pt"
+
+tasks.register('downloadVoskModel') {
+    outputs.file(voskZip)
+    doLast {
+        println "Downloading Vosk model from ${voskModelUrl} ..."
+        new URL(voskModelUrl).withInputStream { i ->
+            new File(voskZip).withOutputStream { it << i }
+        }
+        println "Saved to ${voskZip}"
+    }
+}
+
+tasks.register('unzipVoskModel', Copy) {
+    dependsOn 'downloadVoskModel'
+    doFirst {
+        delete voskTargetDir
+        file(voskTargetDir).mkdirs()
+    }
+    from zipTree(voskZip)
+    into voskTargetDir
+}
+
+preBuild.dependsOn 'unzipVoskModel'
+// === end auto-download ===
+
